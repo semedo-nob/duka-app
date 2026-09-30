@@ -1,0 +1,31 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5434/duka}
+    username: ${DATABASE_USER:duka}
+    password: ${DATABASE_PASSWORD:duka}
+
+duka:
+  jwt:
+    secret: ${DUKA_JWT_SECRET:dev-only-jwt-secret-change-before-any-deploy}
+    ttl-minutes: 720
+  bootstrap:
+    phone: ${DUKA_BOOTSTRAP_PHONE:0712345678}
+    pin: ${DUKA_BOOTSTRAP_PIN:changeme}
+    name: ${DUKA_BOOTSTRAP_NAME:Amina Njeri}
+  mpesa:
+    mode: ${MPESA_MODE:mock}
+    webhook-secret: ${MPESA_WEBHOOK_SECRET:dev-webhook-secret}
+  security:
+    allow-registration: true
+  platform:
+    # Development only. Production refuses this phone and PIN.
+    phone: ${DUKA_PLATFORM_ADMIN_PHONE:0700000000}
+    pin: ${DUKA_PLATFORM_ADMIN_PIN:123456}
+    name: Dev platform admin
+  billing:
+    # unconfigured: checkout stays locked.
+    # mock: development and test only. The prod profile refuses to start.
+    # paystack: real verification. A return URL is not proof of payment.
+    provider: ${DUKA_BILLING_PROVIDER:unconfigured}

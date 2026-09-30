@@ -1,0 +1,35 @@
+# Production has no development passwords. The process must receive these from the environment.
+# Demo catalogue seed (db/dev) is not on this classpath.
+spring:
+  flyway:
+    locations: classpath:db/migration
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+
+duka:
+  jwt:
+    secret: ${DUKA_JWT_SECRET}
+  bootstrap:
+    phone: ${DUKA_BOOTSTRAP_PHONE:}
+    pin: ${DUKA_BOOTSTRAP_PIN:}
+  mpesa:
+    mode: ${MPESA_MODE:live}
+    webhook-secret: ${MPESA_WEBHOOK_SECRET:}
+  etims:
+    mode: ${ETIMS_MODE:unconfigured}
+  security:
+    allow-registration: ${DUKA_ALLOW_REGISTRATION:false}
+  platform:
+    phone: ${DUKA_PLATFORM_ADMIN_PHONE:}
+    pin: ${DUKA_PLATFORM_ADMIN_PIN:}
+    recovery-code: ${DUKA_PLATFORM_RECOVERY_CODE:}
+  billing:
+    # paystack verifies every charge. mock is refused at startup on this profile.
+    provider: ${DUKA_BILLING_PROVIDER:paystack}
+    secret-key: ${DUKA_BILLING_SECRET_KEY:}
+    webhook-secret: ${DUKA_BILLING_WEBHOOK_SECRET:}
+    callback-url: ${DUKA_BILLING_CALLBACK_URL:}
+    webhook-url: ${DUKA_BILLING_WEBHOOK_URL:}
+    public-key: ${DUKA_BILLING_PUBLIC_KEY:}

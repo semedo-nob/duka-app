@@ -1,0 +1,76 @@
+{
+  "grocery": {
+    "label": "Grocery",
+    "nodes": [
+      {"name": "Grains & Flour", "children": ["Maize Flour", "Rice", "Wheat Flour"]},
+      {"name": "Dairy", "children": ["Milk", "Yoghurt", "Eggs"]},
+      {"name": "Beverages", "children": ["Soda", "Water", "Tea & Coffee"]},
+      {"name": "Household", "children": ["Soap", "Detergent"]}
+    ]
+  },
+  "electronics": {
+    "label": "Electronics",
+    "nodes": [
+      {"name": "Phones"},
+      {"name": "Tablets"},
+      {"name": "Laptops"},
+      {"name": "Accessories", "children": ["Chargers", "USB Cables", "Earphones", "Power Banks"]},
+      {"name": "Storage", "children": ["Flash Disks", "Memory Cards", "SSDs"]},
+      {"name": "Computer Accessories", "children": ["Keyboards", "Mice", "Adapters"]},
+      {"name": "Networking", "children": ["Routers", "Switches", "Network Cables"]}
+    ]
+  },
+  "clothing": {
+    "label": "Clothing",
+    "nodes": [
+      {"name": "Women"},
+      {"name": "Men"},
+      {"name": "Children"},
+      {"name": "Shoes"},
+      {"name": "Accessories"}
+    ]
+  },
+  "pharmacy": {
+    "label": "Pharmacy",
+    "nodes": [
+      {"name": "Prescription"},
+      {"name": "Over the Counter"},
+      {"name": "Personal Care"},
+      {"name": "First Aid"}
+    ]
+  },
+  "hardware": {
+    "label": "Hardware",
+    "nodes": [
+      {"name": "Tools"},
+      {"name": "Fasteners"},
+      {"name": "Paint"},
+      {"name": "Plumbing"},
+      {"name": "Electrical"}
+    ]
+  },
+  "restaurant": {
+    "label": "Restaurant",
+    "nodes": [
+      {"name": "Food"},
+      {"name": "Drinks"},
+      {"name": "Ingredients"},
+      {"name": "Packaging"}
+    ]
+  },
+  "cosmetics": {
+    "label": "Cosmetics",
+    "nodes": [
+      {"name": "Skin"},
+      {"name": "Hair"},
+      {"name": "Fragrance"},
+      {"name": "Makeup"}
+    ]
+  },
+  "general": {
+    "label": "General retail",
+    "nodes": [
+      {"name": "General"}
+    ]
+  }
+}

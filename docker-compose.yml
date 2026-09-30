@@ -1,0 +1,45 @@
+# Local development uses one Postgres container named duka-pg on host port 5434.
+# If that container is already running, do not start a second one. Use scripts/dev-db.sh.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: duka-pg
+    environment:
+      POSTGRES_USER: duka
+      POSTGRES_PASSWORD: duka
+      POSTGRES_DB: duka
+    ports:
+      - "5434:5432"
+    volumes:
+      - duka_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U duka -d duka"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DATABASE_URL: jdbc:postgresql://postgres:5432/duka
+      DATABASE_USER: duka
+      DATABASE_PASSWORD: duka
+      DUKA_BOOTSTRAP_PHONE: "0712345678"
+      DUKA_BOOTSTRAP_PIN: changeme
+      DUKA_JWT_SECRET: dev-only-jwt-secret-change-before-any-deploy
+      MPESA_MODE: mock
+      MPESA_WEBHOOK_SECRET: dev-webhook-secret
+      ETIMS_MODE: unconfigured
+      DUKA_STORAGE_PATH: /data/documents
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - duka_docs:/data/documents
+
+volumes:
+  duka_pg:
+  duka_docs:

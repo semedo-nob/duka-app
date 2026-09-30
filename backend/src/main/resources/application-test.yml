@@ -1,0 +1,29 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5434/duka_test}
+    username: ${DATABASE_USER:duka}
+    password: ${DATABASE_PASSWORD:duka}
+
+duka:
+  jwt:
+    secret: test-jwt-secret-not-used-outside-tests
+    ttl-minutes: 60
+  bootstrap:
+    phone: "0712345678"
+    pin: "test-pin"
+    name: Tester
+  storage:
+    path: ${java.io.tmpdir}/duka-test-docs
+  mpesa:
+    mode: mock
+    webhook-secret: test-webhook-secret
+  etims:
+    mode: unconfigured
+  security:
+    allow-registration: true
+  platform:
+    phone: "0700000000"
+    pin: "123456"
+    name: Test platform admin

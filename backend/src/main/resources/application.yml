@@ -1,0 +1,54 @@
+server:
+  port: ${PORT:4000}
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+duka:
+  storage:
+    path: ${DUKA_STORAGE_PATH:./data/documents}
+  mpesa:
+    mode: ${MPESA_MODE:mock}
+    webhook-secret: ${MPESA_WEBHOOK_SECRET:}
+    consumer-key: ${MPESA_CONSUMER_KEY:}
+    consumer-secret: ${MPESA_CONSUMER_SECRET:}
+    shortcode: ${MPESA_SHORTCODE:}
+    passkey: ${MPESA_PASSKEY:}
+    callback-url: ${MPESA_CALLBACK_URL:}
+  etims:
+    mode: ${ETIMS_MODE:unconfigured}
+    base-url: ${ETIMS_BASE_URL:}
+    tin: ${ETIMS_TIN:}
+  security:
+    allow-registration: false
+  billing:
+    provider: ${DUKA_BILLING_PROVIDER:unconfigured}
+    secret-key: ${DUKA_BILLING_SECRET_KEY:}
+    webhook-secret: ${DUKA_BILLING_WEBHOOK_SECRET:}
+    callback-url: ${DUKA_BILLING_CALLBACK_URL:}
+    webhook-url: ${DUKA_BILLING_WEBHOOK_URL:}
+    public-key: ${DUKA_BILLING_PUBLIC_KEY:}
+    api-base: ${DUKA_BILLING_API_BASE:https://api.paystack.co}
+  platform:
+    phone: ${DUKA_PLATFORM_ADMIN_PHONE:}
+    pin: ${DUKA_PLATFORM_ADMIN_PIN:}
+    recovery-code: ${DUKA_PLATFORM_RECOVERY_CODE:}
