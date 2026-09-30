@@ -361,17 +361,17 @@ export function PlatformBusiness() {
         <StatusBadge value={status} /> <StatusBadge value={String(data.subscriptionStatus || 'NONE')} /> {String(data.plan || 'no plan')}
       </p>
       {note && <p>{note}</p>}
-      {recovery && <p>Give this one-time code to {String(data.owner || 'the owner')}. They choose the new PIN. You will not see that PIN. Code: <strong>{recovery}</strong></p>}
+      {recovery && <p>Give this one-time code to {String(ownerRecord(data.owner).name || 'the owner')}. They choose the new PIN. You will not see that PIN. Code: <strong>{recovery}</strong></p>}
       <Tabs tabs={['Overview', 'Staff', 'Branches', 'Devices', 'Subscription', 'Payments', 'Entitlements', 'Support', 'Diagnostics', 'Audit']} value={tab} onChange={setTab} />
       {tab === 'Overview' && (
         <div className="card ops-panel">
           <div className="ops-kv">
-            <span>Owner</span><strong>{String(data.owner || '—')}</strong>
-            <span>Phone</span><strong>{String(data.ownerPhone || '—')}</strong>
+            <span>Owner</span><strong>{String(ownerRecord(data.owner).name || data.owner || '—')}</strong>
+            <span>Phone</span><strong>{String(ownerRecord(data.owner).phone || data.ownerPhone || '—')}</strong>
             <span>Status reason</span><strong>{String(data.statusReason || '—')}</strong>
             <span>Changed by</span><strong>{String(data.statusChangedBy || '—')} · {when(data.statusChangedAt)}</strong>
-            <span>Branches</span><strong>{String(data.branches)}</strong>
-            <span>Devices</span><strong>{String(data.devices)}</strong>
+            <span>Branches</span><strong>{String(countOf(data.branches))}</strong>
+            <span>Devices</span><strong>{String(countOf(data.devices))}</strong>
             <span>Created</span><strong>{when(data.createdAt)}</strong>
             <span>Last activity</span><strong>{when(data.lastActivity)}</strong>
           </div>
@@ -808,6 +808,15 @@ export function PlatformAdmins() {
       </form>
     </>
   );
+}
+
+function ownerRecord(value: unknown): Row {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value as Row;
+  return {};
+}
+
+function countOf(value: unknown) {
+  return Array.isArray(value) ? value.length : value ?? '—';
 }
 
 function asRows(value: unknown): Row[] {
