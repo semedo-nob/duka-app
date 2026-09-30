@@ -218,7 +218,8 @@ tbody tr:hover {
   margin-bottom: 6px;
 }
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   width: 100%;
   padding: 10px 12px;
   border-radius: 9px;
@@ -228,7 +229,8 @@ tbody tr:hover {
   font-family: inherit;
 }
 .form-field input:focus,
-.form-field select:focus {
+.form-field select:focus,
+.form-field textarea:focus {
   border-color: var(--brand);
   outline: none;
 }

@@ -4,17 +4,22 @@ import { Drawer } from '../components/Drawer';
 import { Icons } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useSettings, useUpdateSettings } from '../lib/queries';
+import { setAuthToken } from '../lib/api';
+import { useStore } from '../store/useStore';
 import type { Settings as SettingsType } from '../lib/api';
 
 type SettingsKey = 'business' | 'payments' | 'receipts' | 'tax';
 
-const GROUPS: { key: SettingsKey | 'team' | 'billing'; title: string; desc: string }[] = [
+const GROUPS: { key: SettingsKey | 'team' | 'billing' | 'account' | 'support' | 'diagnostics'; title: string; desc: string }[] = [
+  { key: 'account', title: 'My account', desc: 'PIN, sessions, and the business account' },
   { key: 'business', title: 'Business', desc: 'Name, address, receipt logo' },
   { key: 'payments', title: 'Payments', desc: 'Cash, M-Pesa till, card terminal' },
   { key: 'receipts', title: 'Receipts', desc: 'Layout, footer message' },
   { key: 'tax', title: 'Tax / eTIMS', desc: 'Taxpayer PIN, submission log' },
   { key: 'team', title: 'Team & permissions', desc: 'Roles and access' },
-  { key: 'billing', title: 'Capabilities', desc: "What's unlocked on your plan" },
+  { key: 'billing', title: 'Billing', desc: 'Plan, payment, and what is unlocked' },
+  { key: 'support', title: 'Support', desc: 'Tickets with Duka' },
+  { key: 'diagnostics', title: 'Diagnostics', desc: 'This device, sync, and printers' },
 ];
 
 const TITLES: Record<SettingsKey, string> = {
@@ -147,6 +152,7 @@ function SettingsDrawer({ kind, current, onClose }: { kind: SettingsKey; current
 
 export default function Settings() {
   const navigate = useNavigate();
+  const logOut = useStore((s) => s.logOut);
   const [drawer, setDrawer] = useState<SettingsKey | null>(null);
   const { data: settings, isLoading, isError } = useSettings();
 
@@ -160,7 +166,10 @@ export default function Settings() {
             style={{ cursor: 'pointer' }}
             onClick={() => {
               if (g.key === 'billing') navigate('/settings/billing');
+              else if (g.key === 'account') navigate('/account');
               else if (g.key === 'team') navigate('/team');
+              else if (g.key === 'support') navigate('/settings/support');
+              else if (g.key === 'diagnostics') navigate('/settings/diagnostics');
               else setDrawer(g.key as SettingsKey);
             }}
           >
@@ -177,6 +186,17 @@ export default function Settings() {
         <p style={{ fontSize: 13, color: 'var(--bad)' }}>Couldn't reach the server — make sure the API is running.</p>
       )}
       {drawer && settings && <SettingsDrawer kind={drawer} current={settings} onClose={() => setDrawer(null)} />}
+      <button
+        className="btn btn-ghost"
+        style={{ marginTop: 18 }}
+        onClick={() => {
+          setAuthToken(null);
+          logOut();
+          navigate('/login');
+        }}
+      >
+        Log out
+      </button>
     </>
   );
 }

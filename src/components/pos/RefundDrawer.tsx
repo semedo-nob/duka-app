@@ -23,7 +23,7 @@ export function RefundDrawer({ onClose }: { onClose: () => void }) {
             <Icons.check size={24} color="var(--good)" />
           </div>
           <h3>Refund issued</h3>
-          <p>Stock, payment records and the tax submission have been adjusted automatically.</p>
+          <p>Returned items are back in stock. A tax credit note is only sent when eTIMS is actually connected.</p>
         </div>
       </Drawer>
     );

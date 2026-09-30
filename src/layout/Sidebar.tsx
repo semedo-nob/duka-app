@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { PRIMARY_NAV, MANAGE_NAV, INSIGHT_NAV } from './navConfig';
-import { useCapabilities } from '../lib/queries';
+import { useCapabilities, useSubscription } from '../lib/queries';
 import type { CapabilityKey } from '../lib/api';
 
 function NavButton({
@@ -34,7 +34,8 @@ function NavButton({
 export function Sidebar() {
   const navigate = useNavigate();
   const { data: caps } = useCapabilities();
-  const unlockedCount = 4 + Object.values(caps || {}).filter(Boolean).length;
+  const { data: subscription } = useSubscription();
+  const paid = Object.values(caps || {}).filter(Boolean).length;
 
   return (
     <nav className="sidebar">
@@ -66,8 +67,8 @@ export function Sidebar() {
       <div className="sidebar-foot">
         <button className="plan-chip" onClick={() => navigate('/settings/billing')}>
           <div>
-            <div className="t1">Growth plan</div>
-            <div className="t2">{unlockedCount} of 9 unlocked</div>
+            <div className="t1">{subscription?.plan ? `${subscription.plan} plan` : 'No paid plan'}</div>
+            <div className="t2">{paid ? `${paid} paid modules` : subscription?.status === 'ACTIVE' ? 'Active' : 'Paid modules locked'}</div>
           </div>
           <Icons.chevronRight size={15} color="#fff" />
         </button>

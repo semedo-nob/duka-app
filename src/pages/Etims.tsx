@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Drawer } from '../components/Drawer';
-import { Icons } from '../components/Icons';
 import { Metric } from '../components/Shared';
-import { useCapabilities, useUnlockCapability, useEtims, useRetryEtims } from '../lib/queries';
+import { ModuleLocked } from '../components/ModuleLocked';
+import { useCapabilities, useEtims, useRetryEtims, useUpdateSettings } from '../lib/queries';
 
 function pill(status: string) {
   if (status === 'Accepted') return <span className="pill pill-good">Accepted</span>;
@@ -11,19 +11,24 @@ function pill(status: string) {
 }
 
 function DeviceConfigDrawer({ onClose }: { onClose: () => void }) {
-  const [pin, setPin] = useState('P051234567X');
-  const [branchConfig, setBranchConfig] = useState('Single device');
+  const [pin, setPin] = useState('');
+  const update = useUpdateSettings();
   return (
     <Drawer
-      title="Device configuration"
+      title="Taxpayer PIN"
       onClose={onClose}
       footer={
         <>
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={onClose}>
-            Save changes
+          <button
+            className="btn btn-primary"
+            style={{ flex: 1 }}
+            disabled={update.isPending || pin.length < 4}
+            onClick={() => update.mutate({ section: 'tax', data: { pin } }, { onSuccess: onClose })}
+          >
+            Save PIN locally
           </button>
         </>
       }
@@ -32,23 +37,9 @@ function DeviceConfigDrawer({ onClose }: { onClose: () => void }) {
         <label>Taxpayer PIN</label>
         <input value={pin} onChange={(e) => setPin(e.target.value)} />
       </div>
-      <div className="form-field">
-        <label>Branch configuration</label>
-        <select value={branchConfig} onChange={(e) => setBranchConfig(e.target.value)}>
-          <option>Single device</option>
-          <option>Per-branch devices</option>
-        </select>
-      </div>
-      <div className="form-field">
-        <label>Invoice numbering</label>
-        <select>
-          <option>Automatic (recommended)</option>
-          <option>Manual</option>
-        </select>
-      </div>
-      <div style={{ padding: '12px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12.5, color: 'var(--ink-soft)' }}>
-        Credit notes for refunds are generated automatically — you won't need to submit these by hand.
-      </div>
+      <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+        This stores the PIN on this server only. Nothing is sent to KRA until an official eTIMS contract is configured.
+      </p>
     </Drawer>
   );
 }
@@ -56,23 +47,15 @@ function DeviceConfigDrawer({ onClose }: { onClose: () => void }) {
 export default function Etims() {
   const [showConfig, setShowConfig] = useState(false);
   const { data: caps } = useCapabilities();
-  const unlockCapability = useUnlockCapability();
   const { data: etimsInfo, isLoading } = useEtims();
   const retryEtims = useRetryEtims();
 
   if (!caps?.etims) {
     return (
-      <div className="empty" style={{ maxWidth: 440, margin: '40px auto' }}>
-        <Icons.doc size={46} color="var(--ink-faint)" />
-        <h3>eTIMS isn't connected yet</h3>
-        <p>
-          Once connected, every sale is submitted to KRA automatically — cashiers never see the technical side,
-          only a plain confirmation or a clear message if something needs attention.
-        </p>
-        <button className="btn btn-accent" disabled={unlockCapability.isPending} onClick={() => unlockCapability.mutate('etims')}>
-          {unlockCapability.isPending ? 'Connecting…' : 'Connect eTIMS'}
-        </button>
-      </div>
+      <ModuleLocked
+        title="eTIMS isn't on this plan"
+        body="Sales can still be completed. Tax invoices stay in the local queue and are not sent to KRA until both the module and an official adapter are configured."
+      />
     );
   }
 
@@ -88,7 +71,7 @@ export default function Etims() {
       {etimsInfo && (
         <>
           <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
-            <Metric label="Connection" value="Connected" dir="up" delta="" />
+            <Metric label="Connection" value={etimsInfo.configured ? 'Ready' : 'Not configured'} dir={etimsInfo.configured ? 'up' : ''} delta={etimsInfo.message || ''} />
             <Metric label="Submitted today" value={etimsInfo.submittedToday} />
             <Metric label="Accepted" value={etimsInfo.accepted} delta="" dir="up" />
             <Metric label="Failed / Pending" value={etimsInfo.failed + etimsInfo.pending} delta={etimsInfo.failed ? 'needs retry' : ''} dir={etimsInfo.failed ? 'down' : 'up'} />
@@ -97,7 +80,7 @@ export default function Etims() {
             <div className="card panel" style={{ marginBottom: 18 }}>
               <h3 style={{ marginBottom: 6 }}>eTIMS submission issue</h3>
               <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 14px' }}>
-                We couldn't send {etimsInfo.failed} invoice{etimsInfo.failed > 1 ? 's' : ''} to KRA. Click below to retry manually.
+                {etimsInfo.failed} invoice{etimsInfo.failed > 1 ? 's are' : ' is'} marked failed. Retry checks the adapter again. It will not mark them accepted unless KRA actually accepts them.
               </p>
               <button
                 className="btn btn-primary btn-sm"

@@ -4,7 +4,8 @@ import { Icons } from '../components/Icons';
 import { Metric } from '../components/Shared';
 import { money } from '../lib/format';
 import { useToast } from '../components/Toast';
-import { useCustomers, useCreateCustomer, useCustomerSales, useCapabilities, useUnlockCapability, useRecordPayment } from '../lib/queries';
+import { ModuleLocked } from '../components/ModuleLocked';
+import { useCustomers, useCreateCustomer, useCustomerSales, useCapabilities, useRecordPayment } from '../lib/queries';
 
 function AddCustomerDrawer({ onClose, showToast }: { onClose: () => void; showToast: (m: string) => void }) {
   const [name, setName] = useState('');
@@ -55,7 +56,6 @@ function AddCustomerDrawer({ onClose, showToast }: { onClose: () => void; showTo
 export default function Customers() {
   const { data: customers, isLoading, isError } = useCustomers();
   const { data: caps } = useCapabilities();
-  const unlockCapability = useUnlockCapability();
   const recordPayment = useRecordPayment();
   const showToast = useToast();
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -150,18 +150,7 @@ export default function Customers() {
                   </div>
                 </>
               ) : (
-                <div className="card" style={{ maxWidth: 520, padding: 16, margin: '24px 0 0', display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div className="cap-ic" style={{ background: 'var(--border-soft)', color: 'var(--ink-faint)', flexShrink: 0 }}>
-                    <Icons.box size={17} color="var(--ink-faint)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13.5 }}>Let customers buy on credit</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>Track balances and limits per customer.</div>
-                  </div>
-                  <button className="btn btn-ghost btn-sm" disabled={unlockCapability.isPending} onClick={() => unlockCapability.mutate('credit')}>
-                    Unlock
-                  </button>
-                </div>
+                <ModuleLocked title="Customer credit isn't on this plan" body="You can still keep customer names. Selling on credit stays locked until the subscription includes it." />
               )}
 
               <h3 style={{ fontSize: 14, margin: '24px 0 12px' }}>Recent transactions</h3>

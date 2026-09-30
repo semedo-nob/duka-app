@@ -122,6 +122,14 @@
   min-width: 0;
   height: 100vh;
 }
+.sync-banner {
+  flex-shrink: 0;
+  padding: 8px 22px;
+  background: #fff6e5;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
 .topbar {
   height: 60px;
   flex-shrink: 0;

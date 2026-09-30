@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { PAGE_TITLES } from './navConfig';
 import { useStore } from '../store/useStore';
-import { useCapabilities, useProducts, useCustomers } from '../lib/queries';
+import { useCapabilities, useProducts, useCustomers, useBranches } from '../lib/queries';
 
 export function Topbar() {
   const location = useLocation();
@@ -13,12 +13,18 @@ export function Topbar() {
   const { data: customers } = useCustomers();
   const currentBranch = useStore((s) => s.currentBranch);
   const setCurrentBranch = useStore((s) => s.setCurrentBranch);
+  const user = useStore((s) => s.user);
+  const { data: branches } = useBranches();
 
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const [title, sub] = PAGE_TITLES[location.pathname] || ['Duka', ''];
+  const page = PAGE_TITLES[location.pathname] || ['Duka', ''];
+  const hour = new Date().getHours();
+  const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const title = location.pathname === '/' ? `${hello}${user?.name ? `, ${user.name.split(' ')[0]}` : ''}` : page[0];
+  const sub = location.pathname === '/' ? new Date().toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' }) : page[1];
   const isSell = location.pathname === '/sell';
 
   useEffect(() => {
@@ -43,10 +49,10 @@ export function Topbar() {
 
       {caps?.multiBranch && !isSell && (
         <select className="branch-switcher" value={currentBranch} onChange={(e) => setCurrentBranch(e.target.value)}>
-          <option>All branches</option>
-          <option>Nairobi — Moi Avenue</option>
-          <option>Mombasa — Nyali</option>
-          <option>Kisumu — CBD</option>
+          <option value="">This device's branch</option>
+          {(branches || []).map((branch) => (
+            <option key={branch.id} value={branch.name}>{branch.name}</option>
+          ))}
         </select>
       )}
 

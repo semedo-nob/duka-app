@@ -3,7 +3,8 @@ import { Drawer } from '../components/Drawer';
 import { Icons } from '../components/Icons';
 import { money } from '../lib/format';
 import { useToast } from '../components/Toast';
-import { useCapabilities, useUnlockCapability, useBranches, useCreateBranch, useWarehouses, useTransferStock } from '../lib/queries';
+import { ModuleLocked } from '../components/ModuleLocked';
+import { useCapabilities, useBranches, useCreateBranch, useWarehouses, useTransferStock } from '../lib/queries';
 
 function AddBranchDrawer({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -49,7 +50,6 @@ function AddBranchDrawer({ onClose }: { onClose: () => void }) {
 
 export default function Branches() {
   const { data: caps } = useCapabilities();
-  const unlockCapability = useUnlockCapability();
   const { data: branches, isLoading: branchesLoading } = useBranches();
   const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
   const transferStock = useTransferStock();
@@ -58,17 +58,10 @@ export default function Branches() {
 
   if (!caps?.multiBranch) {
     return (
-      <div className="empty" style={{ maxWidth: 440, margin: '40px auto' }}>
-        <Icons.branch size={46} color="var(--ink-faint)" />
-        <h3>Running more than one shop?</h3>
-        <p>
-          Multi-branch adds location switching, per-branch stock, and consolidated reporting — while cashiers keep
-          using the same simple POS.
-        </p>
-        <button className="btn btn-accent" disabled={unlockCapability.isPending} onClick={() => unlockCapability.mutate('multiBranch')}>
-          {unlockCapability.isPending ? 'Unlocking…' : 'Unlock Multi-branch'}
-        </button>
-      </div>
+      <ModuleLocked
+        title="Multi-branch isn't on this plan"
+        body="Extra locations are a paid module. Stock is still tracked for this shop."
+      />
     );
   }
 
@@ -129,7 +122,7 @@ export default function Branches() {
                       onClick={() =>
                         transferStock.mutate(
                           { from: w.name, to: w.branch, amount: 50000 },
-                          { onSuccess: () => showToast(`Transferred stock from ${w.name}`) }
+                          { onSuccess: () => showToast('Transfer request recorded. Product quantities were not moved.') }
                         )
                       }
                     >

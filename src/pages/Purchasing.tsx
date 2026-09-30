@@ -1,25 +1,123 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Drawer } from '../components/Drawer';
 import { Icons } from '../components/Icons';
 import { money } from '../lib/format';
 import { useToast } from '../components/Toast';
-import { useCapabilities, useUnlockCapability, usePurchaseOrders, useCreatePurchaseOrder, useSuppliers, useCreateSupplier, useProducts } from '../lib/queries';
+import { ModuleLocked } from '../components/ModuleLocked';
+import { useCapabilities, usePurchaseOrders, useCreatePurchaseOrder, useSuppliers, useCreateSupplier, useUpdateSupplier, useProducts } from '../lib/queries';
+import { api, type Supplier } from '../lib/api';
+
+function SupplierHistory({ id }: { id: number }) {
+  const { data: products } = useProducts();
+  const showToast = useToast();
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof api.suppliers.get>> | null>(null);
+  const [productId, setProductId] = useState('');
+  const [supplierSku, setSupplierSku] = useState('');
+  const [alias, setAlias] = useState('');
+  const [unitCost, setUnitCost] = useState('');
+
+  function load() {
+    api.suppliers.get(id).then(setDetail).catch(() => setDetail(null));
+  }
+
+  useEffect(() => {
+    load();
+  }, [id]);
+
+  return (
+    <div className="card" style={{ marginTop: 12, padding: 16 }}>
+      <strong>Supplier products and history</strong>
+      {!detail && <p style={{ fontSize: 13 }}>Loading…</p>}
+      {detail && (
+        <>
+          <div className="form-row2" style={{ marginTop: 12 }}>
+            <div className="form-field">
+              <label>Link a product</label>
+              <select value={productId} onChange={(e) => setProductId(e.target.value)}>
+                <option value="">Select a product</option>
+                {(products || []).map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Supplier SKU</label>
+              <input value={supplierSku} onChange={(e) => setSupplierSku(e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row2">
+            <div className="form-field">
+              <label>Alias on their invoice</label>
+              <input value={alias} onChange={(e) => setAlias(e.target.value)} />
+            </div>
+            <div className="form-field">
+              <label>Their price</label>
+              <input type="number" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
+            </div>
+          </div>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={!productId}
+            onClick={() => api.suppliers.offer(id, { productId: Number(productId), supplierSku, alias, unitCost: unitCost ? parseFloat(unitCost) : undefined }).then(() => { setProductId(''); setSupplierSku(''); setAlias(''); setUnitCost(''); load(); showToast('Product linked to supplier'); }).catch((err) => showToast(err instanceof Error ? err.message : 'Could not link product'))}
+          >
+            Save supplier product
+          </button>
+          <table style={{ marginTop: 12 }}>
+            <thead>
+              <tr><th>Product</th><th>Supplier SKU</th><th>Alias</th><th>Their price</th></tr>
+            </thead>
+            <tbody>
+              {detail.offers.length === 0 && <tr><td colSpan={4}>No products linked yet.</td></tr>}
+              {detail.offers.map((offer) => (
+                <tr key={offer.id}>
+                  <td>{offer.productName}</td>
+                  <td>{offer.supplierSku || '—'}</td>
+                  <td>{offer.alias || '—'}</td>
+                  <td>{offer.unitCost == null ? '—' : money(offer.unitCost)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <table style={{ marginTop: 12 }}>
+            <thead>
+              <tr><th>Record</th><th>Reference</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {detail.history.length === 0 && <tr><td colSpan={3}>No purchase orders or receipts yet.</td></tr>}
+              {detail.history.map((row, index) => (
+                <tr key={`${row.kind}-${row.reference}-${index}`}>
+                  <td>{row.kind}</td>
+                  <td>{row.reference || '—'}</td>
+                  <td>{row.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
+}
 
 function CreatePODrawer({ onClose }: { onClose: () => void }) {
   const { data: products } = useProducts();
   const { data: suppliers } = useSuppliers();
   const createPO = useCreatePurchaseOrder();
   const showToast = useToast();
-  const [supplier, setSupplier] = useState('Kamau Wholesalers');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [itemsCount, setItemsCount] = useState('3');
+  const [supplierId, setSupplierId] = useState('');
+  const [productId, setProductId] = useState('');
+  const [qty, setQty] = useState('1');
   const [cost, setCost] = useState('');
 
   function submit() {
-    const totalAmt = parseFloat(cost) || 0;
-    const count = parseInt(itemsCount) || selectedProducts.length || 1;
+    const chosen = (suppliers || []).find((s) => String(s.id) === supplierId);
     createPO.mutate(
-      { supplier, items: count, total: totalAmt },
+      {
+        supplierId: chosen?.id,
+        supplier: chosen?.name,
+        lines: productId ? [{ productId: Number(productId), qty: parseInt(qty) || 1, unitCost: cost ? parseFloat(cost) : undefined }] : [],
+      },
       {
         onSuccess: () => {
           onClose();
@@ -42,7 +140,7 @@ function CreatePODrawer({ onClose }: { onClose: () => void }) {
           <button
             className="btn btn-primary"
             style={{ flex: 1 }}
-            disabled={createPO.isPending || !supplier}
+            disabled={createPO.isPending || !supplierId || !productId}
             onClick={submit}
           >
             {createPO.isPending ? 'Creating…' : 'Create order'}
@@ -52,36 +150,26 @@ function CreatePODrawer({ onClose }: { onClose: () => void }) {
     >
       <div className="form-field">
         <label>Supplier</label>
-        <select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
-          {(suppliers || [{ name: 'Kamau Wholesalers' }, { name: 'Nakumatt Distributors' }]).map((s) => (
-            <option key={s.name}>{s.name}</option>
+        <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+          <option value="">Select a supplier</option>
+          {(suppliers || []).filter((s) => s.active !== false).map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       </div>
       <div className="form-field">
-        <label>Products</label>
-        <select
-          multiple
-          size={4}
-          style={{ height: 'auto' }}
-          value={selectedProducts}
-          onChange={(e) => {
-            const opts = Array.from(e.target.selectedOptions, (o) => o.value);
-            setSelectedProducts(opts);
-            setItemsCount(String(opts.length || 1));
-          }}
-        >
-          {(products || []).slice(0, 10).map((p) => (
-            <option key={p.id} value={p.name}>
-              {p.name}
-            </option>
+        <label>Product</label>
+        <select value={productId} onChange={(e) => setProductId(e.target.value)}>
+          <option value="">Select a product</option>
+          {(products || []).map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </div>
       <div className="form-row2">
         <div className="form-field">
-          <label>Number of items</label>
-          <input type="number" placeholder="e.g. 3" value={itemsCount} onChange={(e) => setItemsCount(e.target.value)} />
+          <label>Quantity</label>
+          <input type="number" value={qty} onChange={(e) => setQty(e.target.value)} />
         </div>
         <div className="form-field">
           <label>Expected total cost</label>
@@ -92,38 +180,44 @@ function CreatePODrawer({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AddSupplierDrawer({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-  const [productsList, setProductsList] = useState('');
+function AddSupplierDrawer({ onClose, existing }: { onClose: () => void; existing?: Supplier | null }) {
+  const [name, setName] = useState(existing?.name || '');
+  const [phone, setPhone] = useState(existing?.phone || existing?.contact || '');
+  const [email, setEmail] = useState(existing?.email || '');
+  const [address, setAddress] = useState(existing?.address || '');
+  const [category, setCategory] = useState(existing?.category || '');
+  const [notes, setNotes] = useState(existing?.notes || '');
+  const [balance, setBalance] = useState(existing?.balance ? String(existing.balance) : '');
   const createSupplier = useCreateSupplier();
+  const updateSupplier = useUpdateSupplier();
   const showToast = useToast();
+  const pending = createSupplier.isPending || updateSupplier.isPending;
 
   function submit() {
     if (!name) return;
-    createSupplier.mutate(
-      { name, contact, products: productsList },
-      {
-        onSuccess: () => {
-          onClose();
-          showToast('Supplier added');
-        },
-        onError: (err) => showToast(err instanceof Error ? err.message : 'Could not add supplier'),
-      }
-    );
+    const payload = { name, phone, contact: phone, email, address, category, notes, balance: balance ? parseFloat(balance) : 0, products: '' };
+    const done = {
+      onSuccess: () => {
+        onClose();
+        showToast(existing ? 'Supplier updated' : 'Supplier added');
+      },
+      onError: (err: unknown) => showToast(err instanceof Error ? err.message : 'Could not save supplier'),
+    };
+    if (existing) updateSupplier.mutate({ id: existing.id, ...payload }, done);
+    else createSupplier.mutate(payload, done);
   }
 
   return (
     <Drawer
-      title="Add supplier"
+      title={existing ? 'Edit supplier' : 'Add supplier'}
       onClose={onClose}
       footer={
         <>
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} disabled={createSupplier.isPending || !name} onClick={submit}>
-            {createSupplier.isPending ? 'Saving…' : 'Save supplier'}
+          <button className="btn btn-primary" style={{ flex: 1 }} disabled={pending || !name} onClick={submit}>
+            {pending ? 'Saving…' : 'Save supplier'}
           </button>
         </>
       }
@@ -134,11 +228,27 @@ function AddSupplierDrawer({ onClose }: { onClose: () => void }) {
       </div>
       <div className="form-field">
         <label>Contact phone / email</label>
-        <input placeholder="07XX XXX XXX" value={contact} onChange={(e) => setContact(e.target.value)} />
+        <input placeholder="07XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
       <div className="form-field">
-        <label>Products supplied</label>
-        <input placeholder="e.g. Flour, Maize" value={productsList} onChange={(e) => setProductsList(e.target.value)} />
+        <label>Email</label>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="form-field">
+        <label>Address</label>
+        <input value={address} onChange={(e) => setAddress(e.target.value)} />
+      </div>
+      <div className="form-field">
+        <label>What they supply</label>
+        <input placeholder="e.g. Flour, dairy" value={category} onChange={(e) => setCategory(e.target.value)} />
+      </div>
+      <div className="form-field">
+        <label>Recorded payable</label>
+        <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} />
+      </div>
+      <div className="form-field">
+        <label>Notes</label>
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
     </Drawer>
   );
@@ -146,38 +256,35 @@ function AddSupplierDrawer({ onClose }: { onClose: () => void }) {
 
 export default function Purchasing() {
   const { data: caps } = useCapabilities();
-  const unlockCapability = useUnlockCapability();
   const { data: purchaseOrders, isLoading } = usePurchaseOrders();
-  const { data: suppliers, isLoading: suppliersLoading } = useSuppliers();
+  const [query, setQuery] = useState('');
+  const { data: suppliers, isLoading: suppliersLoading } = useSuppliers(query);
+  const updateSupplier = useUpdateSupplier();
+  const showToast = useToast();
+  const qc = useQueryClient();
   const [showCreatePO, setShowCreatePO] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [detail, setDetail] = useState<string>('');
   const [tab, setTab] = useState<'orders' | 'suppliers'>('orders');
-
-  if (!caps?.purchasing) {
-    return (
-      <div className="empty" style={{ maxWidth: 420, margin: '40px auto' }}>
-        <Icons.lock size={46} color="var(--ink-faint)" />
-        <h3>Purchasing isn't unlocked yet</h3>
-        <p>Create purchase orders, track deliveries and manage supplier payables in one place.</p>
-        <button className="btn btn-accent" disabled={unlockCapability.isPending} onClick={() => unlockCapability.mutate('purchasing')}>
-          {unlockCapability.isPending ? 'Unlocking…' : 'Unlock Purchasing'}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <>
       <div className="tabs">
-        <div className={`tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
+        <button type="button" className={`tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
           Purchase orders
-        </div>
-        <div className={`tab${tab === 'suppliers' ? ' active' : ''}`} onClick={() => setTab('suppliers')}>
+        </button>
+        <button type="button" className={`tab${tab === 'suppliers' ? ' active' : ''}`} onClick={() => setTab('suppliers')}>
           Suppliers
-        </div>
+        </button>
       </div>
 
-      {tab === 'orders' ? (
+      {tab === 'orders' && !caps?.purchasing ? (
+        <ModuleLocked
+          title="Purchase orders aren't on this plan"
+          body="You can still keep a supplier directory. Creating purchase orders and receiving supplier stock stay locked until a verified subscription includes purchasing."
+        />
+      ) : tab === 'orders' ? (
         <>
           <div className="toolbar">
             <div className="toolbar-spacer" />
@@ -213,7 +320,9 @@ export default function Purchasing() {
                         {po.status === 'Delivered' ? (
                           <span className="pill pill-good">Delivered</span>
                         ) : (
-                          <span className="pill pill-warn">Awaiting delivery</span>
+                          <button className="btn btn-ghost btn-sm" onClick={() => api.purchaseOrders.receive(po.id).then(() => { qc.invalidateQueries({ queryKey: ['purchaseOrders'] }); qc.invalidateQueries({ queryKey: ['products'] }); showToast('Stock received'); }).catch((err) => showToast(err instanceof Error ? err.message : 'Could not receive'))}>
+                            Receive stock
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -226,8 +335,9 @@ export default function Purchasing() {
       ) : (
         <>
           <div className="toolbar">
+            <input placeholder="Search suppliers" value={query} onChange={(e) => setQuery(e.target.value)} />
             <div className="toolbar-spacer" />
-            <button className="btn btn-accent" onClick={() => setShowAddSupplier(true)}>
+            <button className="btn btn-accent" onClick={() => { setEditing(null); setShowAddSupplier(true); }}>
               <Icons.plus size={15} color="#3A2405" /> Add supplier
             </button>
           </div>
@@ -238,16 +348,26 @@ export default function Purchasing() {
                 <thead>
                   <tr>
                     <th>Supplier</th>
-                    <th>Contact</th>
-                    <th>Products supplied</th>
+                    <th>Phone</th>
+                    <th>Category</th>
+                    <th>Recorded payable</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {suppliers.map((s) => (
-                    <tr key={s.id || s.name}>
-                      <td style={{ fontWeight: 700 }}>{s.name}</td>
-                      <td>{s.contact || '—'}</td>
-                      <td>{s.products || '—'}</td>
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 700 }}>{s.name}{s.active === false ? ' (inactive)' : ''}</td>
+                      <td>{s.phone || s.contact || '—'}</td>
+                      <td>{s.category || '—'}</td>
+                      <td>{money(s.balance || 0)}</td>
+                      <td>
+                        <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(s); setShowAddSupplier(true); }}>Edit</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDetail(detail === String(s.id) ? '' : String(s.id))}>History</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => updateSupplier.mutate({ ...s, name: s.name, active: s.active === false }, { onSuccess: () => showToast(s.active === false ? 'Supplier activated' : 'Supplier deactivated') })}>
+                          {s.active === false ? 'Activate' : 'Deactivate'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -257,8 +377,9 @@ export default function Purchasing() {
         </>
       )}
 
+      {detail && <SupplierHistory id={Number(detail)} />}
       {showCreatePO && <CreatePODrawer onClose={() => setShowCreatePO(false)} />}
-      {showAddSupplier && <AddSupplierDrawer onClose={() => setShowAddSupplier(false)} />}
+      {showAddSupplier && <AddSupplierDrawer existing={editing} onClose={() => setShowAddSupplier(false)} />}
     </>
   );
 }

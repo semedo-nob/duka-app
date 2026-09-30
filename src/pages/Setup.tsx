@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useUpdateSettings } from '../lib/queries';
+import { api, setAuthToken } from '../lib/api';
 
 const CATS: [string, string][] = [
   ['🛒', 'Grocery / mini-mart'],
@@ -42,6 +43,11 @@ export default function Setup() {
   const [name, setName] = useState(setupData.businessName);
   const [type, setType] = useState(setupData.businessType);
   const [category, setCategory] = useState<string | null>(setupData.category);
+  const [phone, setPhone] = useState('');
+  const [pin, setPin] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
 
   if (step === 1) {
     return (
@@ -115,26 +121,59 @@ export default function Setup() {
 
   return (
     <Shell step={3}>
-      <h2>You're ready to sell</h2>
+      <h2>Create the owner login</h2>
       <p className="lede">
-        {setupData.businessName || name} is set up as a {(category || 'shop').toLowerCase()}. Core POS, Inventory,
-        Customers and Expenses are active — unlock more anytime from Settings.
+        {setupData.businessName || name} stays pending until a Duka platform administrator approves it. You can sign in and contact support. Selling starts after approval.
       </p>
-      <div className="auth-actions">
+        <div className="form-field">
+          <label>Your name</label>
+          <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Amina Njeri" />
+        </div>
+        <div className="form-field">
+          <label>Email</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@shop.co.ke" />
+        </div>
+        <div className="form-field">
+          <label>Your phone</label>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07…" />
+        </div>
+        <div className="form-field">
+          <label>PIN</label>
+          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} />
+        </div>
+        {error && <p style={{ color: 'var(--bad)', fontSize: 13 }}>{error}</p>}
+        <div className="auth-actions">
         <button
           className="btn btn-primary btn-lg"
           style={{ width: '100%' }}
-          disabled={updateSettings.isPending}
-          onClick={() => {
-            updateSettings.mutate(
-              { section: 'business', data: { name: setupData.businessName || name, type: setupData.businessType } },
-              {
-                onSettled: () => {
-                  logIn();
-                  navigate('/');
-                },
-              }
-            );
+          disabled={updateSettings.isPending || phone.length < 8 || pin.length < 4}
+          onClick={async () => {
+            try {
+              const result = await api.auth.register({
+                phone,
+                pin,
+                name: ownerName || 'Owner',
+                businessName: setupData.businessName || name,
+                email,
+                businessType: setupData.businessType,
+                category: category || undefined,
+              });
+              setAuthToken(result.token);
+              logIn(result.user);
+              const template = category?.includes('Electronics') ? 'electronics'
+                : category?.includes('Pharmacy') ? 'pharmacy'
+                : category?.includes('Restaurant') ? 'restaurant'
+                : category?.includes('Fashion') ? 'clothing'
+                : category?.includes('Grocery') ? 'grocery'
+                : 'general';
+              await api.categories.applyTemplate(template).catch(() => undefined);
+              updateSettings.mutate(
+                { section: 'business', data: { name: setupData.businessName || name, type: setupData.businessType } },
+                { onSettled: () => navigate('/') },
+              );
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not create the login');
+            }
           }}
         >
           {updateSettings.isPending ? 'Setting up…' : 'Go to dashboard'}

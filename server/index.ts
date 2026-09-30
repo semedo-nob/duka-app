@@ -1,3 +1,5 @@
+// Retired in-memory prototype. The API is the Spring Boot app in /backend.
+// This file is kept so the old experiment is still readable. Do not run it.
 import express from 'express';
 import cors from 'cors';
 import { nanoid } from 'nanoid';

@@ -15,8 +15,14 @@ import Reports from './pages/Reports';
 import Team from './pages/Team';
 import Etims from './pages/Etims';
 import Audit from './pages/Audit';
+import ReceiptReview from './pages/ReceiptReview';
 import Settings from './pages/Settings';
+import Diagnostics from './pages/Diagnostics';
 import Billing from './pages/Billing';
+import Support from './pages/Support';
+import Account from './pages/Account';
+import Join from './pages/Join';
+import { PlatformAdmins, PlatformAudit, PlatformBilling, PlatformBusiness, PlatformBusinesses, PlatformDashboard, PlatformLogin, PlatformPlans, PlatformShell, PlatformSubscriptions, PlatformSupport } from './platform/pages';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const loggedIn = useStore((s) => s.loggedIn);
@@ -29,7 +35,20 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/join" element={<Join />} />
         <Route path="/setup" element={<Setup />} />
+        <Route path="/platform/login" element={<PlatformLogin />} />
+        <Route path="/platform" element={<PlatformShell />}>
+          <Route index element={<PlatformDashboard />} />
+          <Route path="businesses" element={<PlatformBusinesses />} />
+          <Route path="businesses/:id" element={<PlatformBusiness />} />
+          <Route path="support" element={<PlatformSupport />} />
+          <Route path="subscriptions" element={<PlatformSubscriptions />} />
+          <Route path="plans" element={<PlatformPlans />} />
+          <Route path="billing" element={<PlatformBilling />} />
+          <Route path="audit" element={<PlatformAudit />} />
+          <Route path="admins" element={<PlatformAdmins />} />
+        </Route>
         <Route
           element={
             <RequireAuth>
@@ -41,6 +60,7 @@ export default function App() {
           <Route path="/sell" element={<Sell />} />
           <Route path="/products" element={<Products />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/receipts" element={<ReceiptReview />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/purchasing" element={<Purchasing />} />
           <Route path="/expenses" element={<Expenses />} />
@@ -50,7 +70,12 @@ export default function App() {
           <Route path="/etims" element={<Etims />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/diagnostics" element={<Diagnostics />} />
           <Route path="/settings/billing" element={<Billing />} />
+          <Route path="/settings/support" element={<Support />} />
+          <Route path="/settings/diagnostics" element={<Diagnostics />} />
+          <Route path="/support" element={<Support />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

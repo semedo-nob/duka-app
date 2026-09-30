@@ -4,10 +4,15 @@ import { Icons } from '../Icons';
 import { money } from '../../lib/format';
 import { useStore } from '../../store/useStore';
 import { useDashboard } from '../../lib/queries';
+import { api } from '../../lib/api';
+import { ensureIdentity } from '../../lib/localDb';
 
 export function ShiftDrawer({ onClose }: { onClose: () => void }) {
   const shift = useStore((s) => s.shift);
   const closeShift = useStore((s) => s.closeShift);
+  const openShift = useStore((s) => s.openShift);
+  const [opening, setOpening] = useState('');
+  const [error, setError] = useState('');
   const [step, setStep] = useState<'summary' | 'close' | 'done'>('summary');
   const [declared, setDeclared] = useState<number | ''>('');
   const { data } = useDashboard();
@@ -23,7 +28,19 @@ export function ShiftDrawer({ onClose }: { onClose: () => void }) {
       <Drawer title="Shift summary" onClose={onClose}>
         <div className="empty">
           <h3>No shift open</h3>
-          <p>Start a new shift to begin taking sales.</p>
+          <p>Sales still work. Opening a shift records the cash float on the server.</p>
+          <div className="form-field">
+            <label>Opening cash</label>
+            <input type="number" value={opening} onChange={(e) => setOpening(e.target.value)} />
+          </div>
+          {error && <p style={{ color: 'var(--bad)', fontSize: 13 }}>{error}</p>}
+          <button className="btn btn-primary" onClick={() => {
+            const amount = parseFloat(opening) || 0;
+            ensureIdentity().then((identity) => api.shifts.open({ openingCash: amount, deviceId: identity.deviceId })).then(() => {
+              openShift(amount);
+              onClose();
+            }).catch((err) => setError(err instanceof Error ? err.message : 'Could not open the shift'));
+          }}>Open shift</button>
         </div>
       </Drawer>
     );
@@ -37,7 +54,7 @@ export function ShiftDrawer({ onClose }: { onClose: () => void }) {
             <Icons.check size={24} color="var(--good)" />
           </div>
           <h3>Shift closed</h3>
-          <p>Your totals have been saved. A new shift will start when the next cashier opens the till.</p>
+          <p>The counted cash was saved on the server.</p>
         </div>
       </Drawer>
     );
@@ -59,8 +76,10 @@ export function ShiftDrawer({ onClose }: { onClose: () => void }) {
               style={{ flex: 1 }}
               disabled={declared === ''}
               onClick={() => {
-                closeShift();
-                setStep('done');
+                ensureIdentity().then((identity) => api.shifts.close({ declaredCash: Number(declared), expectedCash: expected, deviceId: identity.deviceId })).then(() => {
+                  closeShift();
+                  setStep('done');
+                }).catch((err) => setError(err instanceof Error ? err.message : 'Could not close the shift'));
               }}
             >
               Confirm &amp; close shift

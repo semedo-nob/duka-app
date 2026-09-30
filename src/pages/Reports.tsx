@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Metric, BreakdownRow } from '../components/Shared';
-import { Icons } from '../components/Icons';
 import { money } from '../lib/format';
-import { useCapabilities, useUnlockCapability, useReports } from '../lib/queries';
+import { ModuleLocked } from '../components/ModuleLocked';
+import { useCapabilities, useReports } from '../lib/queries';
 
 export default function Reports() {
   const [tab, setTab] = useState('Today');
   const { data: caps } = useCapabilities();
-  const unlockCapability = useUnlockCapability();
   const { data, isLoading, isError } = useReports(tab);
 
   return (
@@ -63,26 +62,29 @@ export default function Reports() {
         <div className="card panel" style={{ marginTop: 16 }}>
           <div className="row-head">
             <h3 style={{ margin: 0 }}>By cashier</h3>
-            <button className="btn btn-ghost btn-sm">Export CSV</button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const rows = [['Cashier', 'Amount'], ...(data?.byCashier || []).map((row) => [row.name, String(row.val)])];
+                const blob = new Blob([rows.map((row) => row.join(',')).join('\n')], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'duka-cashiers.csv';
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Export CSV
+            </button>
           </div>
-          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>
-            Per-cashier attribution needs sales to be tagged with who rang them up — wire that into the checkout flow
-            once cashier login is added.
-          </p>
+          {(data?.byCashier || []).map((row) => (
+            <BreakdownRow key={row.name} label={row.name} val={row.val} total={data?.totalSales || row.val || 1} />
+          ))}
+          {(!data?.byCashier || data.byCashier.length === 0) && <p style={{ fontSize: 13 }}>No completed sales in this period.</p>}
         </div>
       ) : (
-        <div className="card" style={{ marginTop: 16, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="cap-ic" style={{ background: 'var(--border-soft)', color: 'var(--ink-faint)', flexShrink: 0 }}>
-            <Icons.box size={17} color="var(--ink-faint)" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 13.5 }}>Advanced reports</div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>Breakdowns by cashier, category and exportable CSVs.</div>
-          </div>
-          <button className="btn btn-ghost btn-sm" disabled={unlockCapability.isPending} onClick={() => unlockCapability.mutate('advReports')}>
-            Unlock
-          </button>
-        </div>
+        <ModuleLocked title="Advanced reports aren't on this plan" body="Cashier breakdowns and CSV export stay locked until the subscription includes them." />
       )}
     </>
   );

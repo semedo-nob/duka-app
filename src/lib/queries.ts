@@ -1,12 +1,41 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type CapabilityKey, type SaleItem, type Settings } from './api';
+import { api, type Product, type SaleItem, type Settings } from './api';
+import { mergeCatalogStock } from './posLedger';
+import { readCustomers, readProducts, saveCustomers, saveProducts, unsyncedProductIds } from './localDb';
+
+async function loadProducts(): Promise<Product[]> {
+  try {
+    const products = await api.products.list();
+    const local = await readProducts();
+    const merged = mergeCatalogStock(products, local, await unsyncedProductIds());
+    await saveProducts(merged);
+    return merged;
+  } catch (err) {
+    const cached = await readProducts();
+    if (cached.length) return cached;
+    throw err;
+  }
+}
 
 // ---- Queries ----
 export function useProducts() {
-  return useQuery({ queryKey: ['products'], queryFn: api.products.list });
+  return useQuery({ queryKey: ['products'], queryFn: loadProducts });
 }
 export function useCustomers() {
-  return useQuery({ queryKey: ['customers'], queryFn: api.customers.list });
+  return useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => {
+      try {
+        const customers = await api.customers.list();
+        await saveCustomers(customers);
+        return customers;
+      } catch (err) {
+        const cached = await readCustomers();
+        if (cached.length) return cached;
+        throw err;
+      }
+    },
+  });
 }
 export function useCustomerSales(id: number | null) {
   return useQuery({
@@ -15,8 +44,11 @@ export function useCustomerSales(id: number | null) {
     enabled: id !== null,
   });
 }
-export function useSuppliers() {
-  return useQuery({ queryKey: ['suppliers'], queryFn: api.suppliers.list });
+export function useSuppliers(q?: string) {
+  return useQuery({ queryKey: ['suppliers', q || ''], queryFn: () => api.suppliers.list(q) });
+}
+export function useCategories() {
+  return useQuery({ queryKey: ['categories'], queryFn: api.categories.list });
 }
 export function usePurchaseOrders() {
   return useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders.list });
@@ -118,6 +150,14 @@ export function useCreateSupplier() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
   });
 }
+export function useUpdateSupplier() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number; name: string; phone?: string; email?: string; address?: string; category?: string; notes?: string; products?: string; balance?: number; active?: boolean }) =>
+      api.suppliers.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+  });
+}
 
 export function useCreatePurchaseOrder() {
   const qc = useQueryClient();
@@ -176,7 +216,26 @@ export function useRetryEtims() {
 export function useCreateSale() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { items: SaleItem[]; method: string; customerId?: number }) => api.sales.create(data),
+    mutationFn: (data: {
+      items: SaleItem[];
+      method: string;
+      customerId?: number;
+      discount?: number;
+      tendered?: number;
+      payments?: { method: string; amount: number }[];
+      idempotencyKey?: string;
+      deviceId?: string;
+      installationId?: string;
+      businessId?: string;
+      clientSaleNo?: string;
+    }) => {
+      const { idempotencyKey, deviceId, installationId, businessId, clientSaleNo, ...rest } = data;
+      return api.sales.create(
+        rest,
+        idempotencyKey,
+        deviceId && installationId && businessId ? { deviceId, installationId, businessId, clientSaleNo } : undefined,
+      );
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products'] });
       qc.invalidateQueries({ queryKey: ['sales'] });
@@ -204,16 +263,8 @@ export function useRefundSale() {
   });
 }
 
-export function useUnlockCapability() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (key: CapabilityKey) => api.capabilities.unlock(key),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['capabilities'] });
-      qc.invalidateQueries({ queryKey: ['audit'] });
-      qc.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-  });
+export function useSubscription() {
+  return useQuery({ queryKey: ['subscription'], queryFn: api.subscription.get });
 }
 
 export function useAddTeamMember() {
@@ -224,6 +275,47 @@ export function useAddTeamMember() {
       qc.invalidateQueries({ queryKey: ['team'] });
       qc.invalidateQueries({ queryKey: ['audit'] });
     },
+  });
+}
+
+export function useReceiptReviews() {
+  return useQuery({ queryKey: ['receiptReviews'], queryFn: api.reviews.list });
+}
+
+export function useUploadReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, supplierName, invoiceNumber }: { file: File; supplierName?: string; invoiceNumber?: string }) =>
+      api.reviews.upload(file, { supplierName, invoiceNumber }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['receiptReviews'] }),
+  });
+}
+
+export function useUpdateReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: unknown }) => api.reviews.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['receiptReviews'] }),
+  });
+}
+
+export function useApproveReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.reviews.approve(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['receiptReviews'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['audit'] });
+    },
+  });
+}
+
+export function useRejectReceipt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.reviews.reject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['receiptReviews'] }),
   });
 }
 
