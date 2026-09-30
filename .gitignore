@@ -9,6 +9,18 @@ lerna-debug.log*
 
 node_modules
 dist
+release
+data
+.env
+.env.*
+!.env.example
+backend/.env
+backend/build
+backend/.gradle
+application-local.yml
+**/application-local.yml
+*.dump
+*.sql.gz
 dist-ssr
 *.local
 
